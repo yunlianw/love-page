@@ -1,0 +1,12 @@
+RewriteEngine On
+RewriteBase /
+
+# 保护敏感目录
+RewriteRule ^config/ - [F,L]
+RewriteRule ^core/ - [F,L]
+RewriteRule ^templates/ - [F,L]
+
+# 安装完成后跳转
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.html [L]
