@@ -109,18 +109,19 @@ class LoveGenerator {
             }
         }
 
-        // 纪念日倒计时
+        // 纪念日倒计时（生成静态HTML时计算快照，运行时JS实时刷新）
         $countdownHTML = '';
         if ($c['show_countdown'] ?? 1) {
             $colorClass = ['pink'=>'bg-pink','purple'=>'bg-purple','gold'=>'bg-gold','blue'=>'bg-blue'];
             foreach ($data['countdown'] as $cd) {
+                $bgClass = $colorClass[$cd['bg_color']] ?? 'bg-pink';
+                // 快照（JS禁用时的fallback），运行时由JS按 data-target 实时刷新
                 $target = new DateTime($cd['target_date']);
                 $now = new DateTime();
                 $diff = $now->diff($target);
                 $days = $target > $now ? $diff->days : -$diff->days;
-                $bgClass = $colorClass[$cd['bg_color']] ?? 'bg-pink';
                 $daysText = $days > 0 ? "还有 {$days} 天" : ($days == 0 ? "就是今天！" : "已过 ".abs($days)." 天");
-                $countdownHTML .= '<div class="countdown-card '.$bgClass.'"><div class="cd-emoji">'.$this->h($cd['emoji']).'</div><h3>'.$this->h($cd['name']).'</h3><p>'.$this->h($cd['description']).'</p><div class="cd-date">'.$this->h($cd['target_date']).'</div><div class="cd-days">'.$daysText.'</div></div>';
+                $countdownHTML .= '<div class="countdown-card '.$bgClass.'"><div class="cd-emoji">'.$this->h($cd['emoji']).'</div><h3>'.$this->h($cd['name']).'</h3><p>'.$this->h($cd['description']).'</p><div class="cd-date">'.$this->h($cd['target_date']).'</div><div class="cd-days" id="cd-days-'.intval($cd['id']).'" data-target="'.$this->h($cd['target_date']).'">'.$daysText.'</div></div>';
             }
         }
 
@@ -478,6 +479,21 @@ var st=localStorage.getItem('love_theme')||'pink';setTheme(st);
 function getLD(){var s=localStorage.getItem('love_date');return s?new Date(s):new Date(document.getElementById('love-date').value)}
 function updateTimer(){var i=document.getElementById('love-date');localStorage.setItem('love_date',i.value);var s=getLD(),n=new Date(),d=n-s;if(d<0)return;document.getElementById('days').textContent=Math.floor(d/864e5);document.getElementById('hours').textContent=String(Math.floor(d%864e5/36e5)).padStart(2,'0');document.getElementById('minutes').textContent=String(Math.floor(d%36e5/6e4)).padStart(2,'0');document.getElementById('seconds').textContent=String(Math.floor(d%6e4/1e3)).padStart(2,'0')}
 setInterval(updateTimer,1000);updateTimer();
+// 纪念日倒计时实时计算（每分钟刷新，解决静态HTML日期冻结问题）
+function updateCountdowns(){
+  var now=new Date();
+  document.querySelectorAll('.cd-days[data-target]').forEach(function(el){
+    var t=new Date(el.getAttribute('data-target')+'T00:00:00');
+    if(isNaN(t.getTime()))return;
+    var diff=Math.floor((t-now)/864e5);
+    // 修正夏令时/时区造成的1天偏差：按本地零点重算
+    var t0=new Date(t.getFullYear(),t.getMonth(),t.getDate());
+    var n0=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+    diff=Math.round((t0-n0)/864e5);
+    el.textContent=diff>0?'还有 '+diff+' 天':(diff===0?'就是今天！':'已过 '+Math.abs(diff)+' 天');
+  });
+}
+updateCountdowns();setInterval(updateCountdowns,60000);
 function closeLightbox(){document.getElementById('lightbox').classList.remove('active')}
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closeLightbox()});
 </script>
